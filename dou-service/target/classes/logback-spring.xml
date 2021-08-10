@@ -1,0 +1,208 @@
+<configuration>
+    <!--为了防止进程退出时，内存中的数据丢失，请加上此选项-->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+
+    <springProperty scope="context" name="accessKeyId" source="aliyun.sls.access-key-id"/>
+    <springProperty scope="context" name="accessKeySecret" source="aliyun.sls.access-key-secret"/>
+    <springProperty scope="context" name="logstore" source="aliyun.sls.logstore"/>
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+    <springProperty scope="context" name="log_dir" source="logging.file"/>
+
+    <property name="default_logger_level" value="INFO"/>
+    <!-- 日志最大的历史 30天 -->
+    <property name="maxHistory" value="30"/>
+    <property name="maxFileSize" value="100MB"/>
+    <property name="pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] TrackId:[%X{trackId}] %-5level %logger -%msg%n" />
+
+    <appender name="LoghubAppender" class="com.aliyun.openservices.log.logback.LoghubAppender">
+        <!--必选项-->
+        <!-- 账号及网络配置 -->
+        <endpoint>cn-hangzhou.log.aliyuncs.com</endpoint>
+        <accessKeyId>${accessKeyId}</accessKeyId>
+        <accessKeySecret>${accessKeySecret}</accessKeySecret>
+
+        <!-- sls 项目配置 -->
+        <project>${appName}</project>
+        <logStore>${logstore}</logStore>
+        <!--必选项 (end)-->
+
+        <!-- 可选项 详见 '参数说明'-->
+        <totalSizeInBytes>104857600</totalSizeInBytes>
+        <maxBlockMs>60000</maxBlockMs>
+        <ioThreadCount>8</ioThreadCount>
+        <batchSizeThresholdInBytes>524288</batchSizeThresholdInBytes>
+        <batchCountThreshold>4096</batchCountThreshold>
+        <lingerMs>2000</lingerMs>
+        <retries>10</retries>
+        <baseRetryBackoffMs>100</baseRetryBackoffMs>
+        <maxRetryBackoffMs>100</maxRetryBackoffMs>
+
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><!-- 打印WARN,ERROR级别的日志 -->
+            <level>INFO</level>
+        </filter>
+
+        <mdcFields>THREAD_ID,MDC_KEY</mdcFields>
+    </appender>
+
+    <!-- ConsoleAppender 控制台输出日志 -->
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="STDOUT">
+        <!-- 对日志进行格式化 -->
+        <encoder>
+            <pattern>${pattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ERROR级别日志 -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="ERROR">
+        <File>${log_dir}/errors.log</File>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log_dir}/errors.%d.%i.gz</fileNamePattern>
+            <maxFileSize>${maxFileSize}</maxFileSize>
+            <maxHistory>${maxHistory}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+    <appender name="ASYNC-ERROR-TIME-APPENDER" class="ch.qos.logback.classic.AsyncAppender">
+        <!--当队列的剩余容量小于这个阈值并且当前日志level TRACE, DEBUG or INFO，则丢弃这些日志。默认为queueSize大小的20%。-->
+        <discardingThreshold>0</discardingThreshold>
+        <!--neverBlock=true则写日志队列时候会调用阻塞队列的offer方法而不是put，如果队列满则直接返回，而不是阻塞，即日志被丢弃。-->
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <!--实际负责写日志的appender,最多只能添加一个-->
+        <appender-ref ref="ERROR"/>
+    </appender>
+
+    <!-- WARN级别日志 appender -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="WARN">
+        <File>${log_dir}/warn.log</File>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log_dir}/warn.%d.%i.gz</fileNamePattern>
+            <maxFileSize>${maxFileSize}</maxFileSize>
+            <maxHistory>${maxHistory}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+    <appender name="ASYNC-WARN-TIME-APPENDER" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="WARN"/>
+    </appender>
+
+    <!-- INFO级别日志 appender -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="INFO">
+        <File>${log_dir}/info.log</File>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log_dir}/info.%d.%i.gz</fileNamePattern>
+            <maxFileSize>${maxFileSize}</maxFileSize>
+            <maxHistory>${maxHistory}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+    <appender name="ASYNC-INFO-TIME-APPENDER" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="INFO"/>
+    </appender>
+
+    <!-- DEBUG级别日志 appender -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="DEBUG">
+        <File>${log_dir}/debug.log</File>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log_dir}/debug.%d.%i.gz</fileNamePattern>
+            <maxFileSize>${maxFileSize}</maxFileSize>
+            <maxHistory>${maxHistory}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+    <appender name="ASYNC-DEBUG-TIME-APPENDER" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="DEBUG"/>
+    </appender>
+    <!-- TRACE级别日志 appender -->
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="TRACE">
+        <File>${log_dir}/trace.log</File>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>TRACE</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log_dir}/trace.%d.%i.gz</fileNamePattern>
+            <maxFileSize>${maxFileSize}</maxFileSize>
+            <maxHistory>${maxHistory}</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+    <appender name="ASYNC-TRACE-TIME-APPENDER" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="TRACE"/>
+    </appender>
+
+    <!-- 可用来获取StatusManager中的状态 -->
+    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
+
+    <!-- 解决debug模式下循环发送的问题 -->
+    <logger name="org.apache.http.impl.conn.Wire" level="WARN"/>
+    <logger name="com.rys.account.infrastructure.persistence" level="DEBUG" />
+
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="LoghubAppender"/>
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="ASYNC-ERROR-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-INFO-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-WARN-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-DEBUG-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-TRACE-TIME-APPENDER"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="dev,test,pre">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="ASYNC-ERROR-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-INFO-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-WARN-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-DEBUG-TIME-APPENDER"/>
+            <appender-ref ref="ASYNC-TRACE-TIME-APPENDER"/>
+        </root>
+    </springProfile>
+
+</configuration>
